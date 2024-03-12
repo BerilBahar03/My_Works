@@ -1,0 +1,81 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jan 31 15:08:41 2024
+
+@author: myaman
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+np.random.seed(0)
+
+# read chemicals FTIR absorption library
+df = pd.read_pickle('chemicals 0-117.pkl')
+chemicals   = np.array(df.T) # transmittance [0-1]
+absorbance  = np.log(1/chemicals)
+wavenumbers = df.index
+
+n_components = 2
+absorbance = absorbance[:n_components]
+
+amp  = np.random.rand(n_components)
+freq = np.arange(n_components)+1
+phase = np.random.rand(n_components)*6.28
+
+t = np.linspace(0,10,1000)
+c=amp.reshape(-1,1)*np.sin(freq.reshape(-1,1)*t+phase.reshape(-1,1))+1
+
+spectrum = np.matmul(absorbance.T,c) #(901,1000)'lik bir matrix 
+spectrum += np.random.rand(*spectrum.shape)/100
+
+plt.plot(c.T)
+plt.xlabel("c")
+plt.ylabel("t")
+plt.show()
+
+plt.plot(spectrum, alpha=.01, linewidth=.2)
+plt.show()
+
+plt.matshow(spectrum, aspect=1.0)
+plt.show()
+
+pca = PCA(n_components=2)
+tsne = TSNE(n_components=2, random_state=10)
+
+fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+proj1_c = pca.fit_transform(c.T)
+proj1_spectrum = pca.fit_transform(spectrum.T)
+
+x_c = proj1_c[:, 0] / 2
+y_c = proj1_c[:, 1] / 2
+
+x_spectrum = proj1_spectrum[:, 0] / 2
+y_spectrum = proj1_spectrum[:, 1] / 2
+
+axs[0,0].plot(x_c, y_c, "-.", color="r")
+axs[0,1].plot(x_spectrum, y_spectrum, "-.", color="g")
+
+axs[0,0].set_title('c PCA')
+axs[0,1].set_title('spectrum PCA')
+
+proj2_c = tsne.fit_transform(c.T)
+proj2_spectrum = tsne.fit_transform(spectrum.T)
+
+x_c_tsne = proj2_c[:, 0]
+y_c_tsne = proj2_c[:, 1]
+
+x_spectrum_tsne = proj2_spectrum[:, 0]
+y_spectrum_tsne = proj2_spectrum[:, 1]
+
+axs[1,0].plot(x_c_tsne, y_c_tsne, "-.", color="r")
+axs[1,1].plot(x_spectrum_tsne, y_spectrum_tsne, "-.", color="g")
+
+axs[1,0].set_title('c t-SNE')
+axs[1,1].set_title('spectrum t-SNE')
+
+plt.show()
