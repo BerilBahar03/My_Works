@@ -1,0 +1,292 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 31 15:35:22 2023
+
+@author: Lenovo
+"""
+
+if True:
+    import numpy as np
+    import matplotlib.pyplot as plt
+    # from brukeropusreader import read_file
+    import glob
+    import scipy as sp
+    from scipy.cluster import hierarchy
+    from scipy.spatial.distance import pdist
+    import matplotlib.pyplot as plt
+    from scipy.signal import detrend
+
+    # Yeni veri dosyasını yükleyin ve uygun bir şekilde adlandırın
+    new_data_file = '/home/axe/Masaüstü/LABLAR/Mecit Hocanın LAB/dataz(1)/data3.npz'
+
+    # Yeni veriyi yükle
+    new_data = np.load(new_data_file, allow_pickle=True)
+    # for i in new_data.files:
+    #      print(i)
+    new_spectra = new_data['arr_0']
+
+    # Veriyi işleme kodu
+    num_samples = len(new_spectra[0]) #sensör sayısı 4
+    num_channels = new_spectra.shape[1] #madde sayısı 28
+    num_measurements = new_spectra.shape[2] #ölçüm sayısı 15
+    num_data_points = new_spectra.shape[3] #ölçüm süresi 230
+    data=new_spectra
+    
+    for i in range(min(num_samples, data.shape[0])):
+        for j in range(min(num_channels, data.shape[1])):
+            print(i, j)
+            data[i, j] = detrend(new_spectra[i][j])
+    # AB verisinin ekseni
+    ab_x = np.arange(num_data_points)  # Eksen değerlerini burada ayarlayabilirsiniz
+    
+    # Metadata oluşturma
+    metadata = {'substance_names': ['1. madde', '2. madde', '3. madde', '4. madde', '5. madde', '6. madde', '7. madde', '8. madde', '9. madde',
+                                    '10. madde', '11. madde', '12. madde', 'aseton', 'bütanol', 'dietil eter', 'dimetil formamid', 'ethanol',
+                                    'etil asetat', 'hexan', 'ipa', 'kloroform', 'ksilen', 'metanol', 'metilen klorit', 'siklohexan', 'propanol', 'tetrahidrofuran',
+                                    'toluen'],'ab_x': ab_x[:] }
+
+    
+    metadata['ab_x'] = ab_x
+
+    # Veriyi kaydet
+    np.savez('processed_data.npz', spectra=data, **metadata)
+
+
+import numpy as np
+np.random.seed(0)
+np.set_printoptions(precision=5)
+ 
+ 
+import matplotlib.pyplot as plt
+import pandas as pd
+import pickle
+ 
+import random, sys, time
+random.seed(10)
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+ 
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+    
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+ 
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.metrics import accuracy_score
+ 
+import tensorflow as tf
+import keras
+from keras.utils import to_categorical
+from keras import models
+from keras import layers
+ 
+ 
+import pandas as pd
+ 
+# Save dataframe to pickled pandas object
+df = np.load('processed_data.npz', allow_pickle=True)
+fuel_data1 = df['spectra']
+
+ # Dizinin boyutlarını kontrol et
+num_samples, num_channels, num_measurements, num_data_points = fuel_data1.shape
+expected_shape = (num_samples * num_channels, num_data_points * num_measurements)
+
+if fuel_data1.size != np.prod(expected_shape):
+    raise ValueError(f"Cannot reshape array of size {fuel_data1.size} into shape {expected_shape}")
+
+ # Yeniden şekillendirme yap
+fuel_data = fuel_data1.reshape(expected_shape)
+
+
+chemicals   = np.array(fuel_data)
+absorbance  = np.log(1/chemicals)
+wavenumbers = ab_x
+ 
+ 
+ 
+n_chemicals = len(absorbance)
+n_channels  = absorbance.shape[1]
+ 
+if True:
+    # noise=0.00
+    n_class = len(fuel_data1)
+    n_meas  = len(fuel_data1[0])
+    n_points = len(fuel_data1[0][0])
+    labels = np.zeros(n_meas*n_class, dtype=int)
+    data=fuel_data
+    # data = np.zeros((n_meas*n_class,n_points))
+    # for i in range(n_class):
+        # for j in range(n_meas):
+        #     labels[i*n_meas+j]=i
+        #     m = chemicals[i]+np.random.randn(n_points)*noise
+        #     plt.plot(m+2*i,alpha=1)
+        #     data[i*n_meas+j]=m
+    for i in range(n_class):
+        for j in range(n_meas):
+            labels[i*n_meas+j]=i
+            plt.plot(chemicals[i+j]+2*i,alpha=1)
+    plt.show()
+    print(data.shape, labels.shape)
+    X_train, X_test, y_train, y_test = train_test_split(data,labels)
+    print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)
+    fig,ax = plt.subplots(1,2)
+    ax[0].plot(X_train[y_train==0].T)
+    ax[1].plot(X_train[y_train==1].T)
+    plt.show()
+ 
+ 
+if True:
+    # PCA
+    pca = PCA(n_components=2)
+    proj = pca.fit_transform(X_train)
+    plt.scatter(proj[:, 0], proj[:, 1], alpha = 0.95, c=y_train)
+    x,y = nc= pca.transform(X_test).T
+    plt.scatter(x, y,marker='*', s=10, c=0*y_test)
+    plt.colorbar()
+    plt.title('PCA')
+    plt.show()
+
+    # t-SNE
+    tsne = TSNE(n_components=2, random_state=0)
+    proj = tsne.fit_transform(X_train)
+    plt.scatter(proj[:, 0], proj[:, 1], alpha = 0.95 ,c=y_train)
+    plt.colorbar()
+    plt.title('t-SNE')
+    plt.show()
+ 
+ 
+if True:
+    # 
+    clf_type= 'Naive Bayes'
+ 
+    clf = GaussianNB()
+    clf.fit(X_train, y_train)
+    predicted = clf.predict(X_train)
+    expected = y_train
+    predicted_val = clf.predict(X_test)
+    expected_val = y_test
+    validation_accuracy = accuracy_score(expected_val, predicted_val)
+    training_accuracy = accuracy_score(expected, predicted)
+
+    args = expected, predicted, expected_val, predicted_val
+    fig,ax = plt.subplots(1,2)
+    confusionmatrix = metrics.confusion_matrix(expected, predicted, normalize='all')
+    confusionmatrix_val = metrics.confusion_matrix(expected_val, predicted_val, normalize='all')
+    ax[0].imshow(confusionmatrix)
+    acc = '%.2f'%(training_accuracy)
+    ax[0].set_title('Train '+acc)
+    ax[1].imshow(confusionmatrix_val)
+    acc = '%.2f'%(validation_accuracy)
+    ax[1].set_title('Test '+acc)
+    plt.suptitle(clf_type)
+ 
+    plt.show()
+ 
+    
+if True:
+
+ 
+    # Random forest
+    clf_type= 'RandomForest'
+    clf = RandomForestClassifier(max_depth=10, random_state=0)
+    clf.fit(X_train, y_train)
+    predicted = clf.predict(X_train)
+    expected = y_train
+    predicted_val = clf.predict(X_test)
+    expected_val = y_test
+    validation_accuracy = accuracy_score(expected_val, predicted_val)
+    training_accuracy = accuracy_score(expected, predicted)
+
+    args = expected, predicted, expected_val, predicted_val
+    fig,ax = plt.subplots(1,2)
+    confusionmatrix = metrics.confusion_matrix(expected, predicted, normalize='all')
+    confusionmatrix_val = metrics.confusion_matrix(expected_val, predicted_val, normalize='all')
+    ax[0].imshow(confusionmatrix)
+    acc = '%.2f'%(training_accuracy)
+    ax[0].set_title('Train '+acc)
+    ax[1].imshow(confusionmatrix_val)
+    acc = '%.2f'%(validation_accuracy)
+    ax[1].set_title('Test '+acc)
+    plt.suptitle(clf_type)
+ 
+    plt.show()
+
+if True:
+    # svm
+    clf_type= 'SVM'
+    clf = SVC(kernel='poly', degree=4, coef0=10, C=1.0)
+    clf.fit(X_train, y_train)
+    predicted = clf.predict(X_train)
+    expected = y_train
+    predicted_val = clf.predict(X_test)
+    expected_val = y_test
+    validation_accuracy = accuracy_score(expected_val, predicted_val)
+    training_accuracy = accuracy_score(expected, predicted)
+
+    args = expected, predicted, expected_val, predicted_val
+    fig,ax = plt.subplots(1,2)
+    confusionmatrix = metrics.confusion_matrix(expected, predicted, normalize='all')
+    confusionmatrix_val = metrics.confusion_matrix(expected_val, predicted_val, normalize='all')
+    ax[0].imshow(confusionmatrix)
+    acc = '%.2f'%(training_accuracy)
+    ax[0].set_title('Train '+acc)
+    ax[1].imshow(confusionmatrix_val)
+    acc = '%.2f'%(validation_accuracy)
+    ax[1].set_title('Test '+acc)
+    plt.suptitle(clf_type)
+ 
+    plt.show()
+ 
+if True:
+    # convert labels to one_hot_representation
+    one_hot_train_labels = to_categorical(y_train)
+    one_hot_test_labels = to_categorical(y_test)
+    #model
+    n_classes = one_hot_test_labels.shape[1]
+    model = models.Sequential()
+    
+    model.add(layers.Dense(2048,activation='relu', input_shape=(3450,)))
+    model.add(layers.Dropout(0.1))
+    model.add(layers.Dense(512,activation='relu'))
+    model.add(layers.Dropout(0.1))
+    model.add(layers.Dense(128,activation='relu'))
+    model.add(layers.Dense(64,activation='relu'))
+    model.add(layers.Dense(n_class,activation='softmax'))
+    model.summary()
+    model.compile(optimizer='adam',
+                    loss='categorical_crossentropy',
+                    # loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
+    #training
+    history = model.fit(X_train, one_hot_train_labels,
+                        epochs=100,
+                        batch_size=256,
+                        validation_data=(X_test, one_hot_test_labels), verbose=2)
+ 
+    fig,ax = plt.subplots(1,2)
+    ax[0].plot(history.history['loss']) #blue, train datası
+    ax[0].plot(history.history['val_loss'],'--') #orange, test datası
+    ax[0].set_title('loss')
+    ax[1].plot(history.history['accuracy']) #blue, train datası
+    ax[1].plot(history.history['val_accuracy'],'--') #orange, test datası
+    ax[1].set_title('accuracy')
+    ax[1].set_ylim(0,1.05)
+    plt.show()
+    # use the model to predict the labels of the test data
+    predicted = np.argmax(model.predict(X_train), axis=1)
+    expected = np.argmax(one_hot_train_labels, axis=1)
+    predicted_val = np.argmax(model.predict(X_test), axis=1)
+    expected_val = np.argmax(one_hot_test_labels, axis=1)
+ 
+    validation_accuracy = accuracy_score(expected_val, predicted_val)
+    training_accuracy = accuracy_score(expected, predicted)
+ 
+    # training_accuracy_list.append(training_accuracy)
+    # validation_accuracy_list.append(validation_accuracy)
+    args = expected, predicted, expected_val, predicted_val
+
+#Geliştirilmesi gerek test oranları düşük.
