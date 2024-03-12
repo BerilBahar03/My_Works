@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Feb 17 18:56:15 2024
+
+@author: axe
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+np.random.seed(0)
+
+# read chemicals FTIR absorption library
+df = pd.read_pickle('chemicals 0-117.pkl')
+chemicals = np.array(df.T)  # transmittance [0-1]
+absorbance = np.log(1 / chemicals)
+wavenumbers = df.index
+
+n_components = 2
+absorbance = absorbance[:n_components]
+
+t = np.linspace(0, 10, 1000)
+dt = t[1] - t[0]
+
+c = np.random.rand(n_components, len(t)) #c random bir matrix olursa
+#c = np.ones((n_components, len(t))) #c birlerden oluşan bir matrix olursa
+c_dot = np.zeros((n_components, len(t)))
+c_update = np.zeros((n_components, len(t)))
+#B = np.diag(np.ones(n_components)) #B diagonal bir matrix olursa
+B = np.random.rand(n_components, n_components) #B random bir matrix olursa aynı zamanda asimetrik 
+#B = (B + B.T) / 2  #B simetrik bir matrix olursa
+#B = np.random.randn(n_components, n_components) #B eksili ve artılı karışık bir matrix olursa
+print(B)
+a = np.random.rand(n_components, len(t)) #a katsayının matrixi random olursa
+#a = np.ones((n_components, len(t))) #a katsayısının matrixi birlerden oluşursa
+
+for j in range(len(t)):
+    for i in range(n_components):
+        c_dot[i, j] = np.matmul(B, c[:, j])[i]
+        c_update[i, j] = (a[i, j] * c_dot[i, j] + c[i, j])
+        c[i, j] = c_update[i, j] # c'yi güncelle
+
+spectrum = np.matmul(absorbance.T, c)
+
+plt.plot(t, c.T, linewidth=2)
+plt.xlabel("t")
+plt.ylabel("c")
+plt.show()
+
+plt.plot(spectrum, alpha=.01, linewidth=.2, color = "k")
+plt.show()
+
+plt.matshow(spectrum, aspect=1.0)
+plt.show()
+
+pca = PCA(n_components=2)
+tsne = TSNE(n_components=2, random_state=10)
+
+fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+proj1_c = pca.fit_transform(c.T)
+proj1_spectrum = pca.fit_transform(spectrum.T)
+
+x_c = proj1_c[:, 0] / 2
+y_c = proj1_c[:, 1] / 2
+
+x_spectrum = proj1_spectrum[:, 0] / 2
+y_spectrum = proj1_spectrum[:, 1] / 2
+
+axs[0, 0].scatter(x_c, y_c, s=5, color="r")  # axs[0, 0] düzeltilmiş
+axs[0, 1].scatter(x_spectrum, y_spectrum, s=5, color="g")  # axs[0, 1] düzeltilmiş
+
+axs[0, 0].set_title('c PCA')
+axs[0, 1].set_title('spectrum PCA')
+
+proj2_c = tsne.fit_transform(c.T)
+proj2_spectrum = tsne.fit_transform(spectrum.T)
+
+x_c_tsne = proj2_c[:, 0]
+y_c_tsne = proj2_c[:, 1]
+
+x_spectrum_tsne = proj2_spectrum[:, 0]
+y_spectrum_tsne = proj2_spectrum[:, 1]
+
+axs[1, 0].scatter(x_c_tsne, y_c_tsne, s=5, color="r")  # axs[1, 0] düzeltilmiş
+axs[1, 1].scatter(x_spectrum_tsne, y_spectrum_tsne, s=5, color="g")  # axs[1, 1] düzeltilmiş
+
+axs[1, 0].set_title('c t-SNE')
+axs[1, 1].set_title('spectrum t-SNE')
+
+plt.tight_layout()  # Eksenler arası boşlukları ayarlamak için
+
+plt.show()
+
+
