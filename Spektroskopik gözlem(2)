@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Feb 28 14:51:08 2024
+
+@author: axe
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+np.random.seed(0)
+
+# read chemicals FTIR absorption library
+df = pd.read_pickle('chemicals 0-117.pkl')
+chemicals = np.array(df.T)  # transmittance [0-1]
+absorbance = np.log(1 / chemicals)
+wavenumbers = df.index
+
+n_components = 2
+absorbance = absorbance[:n_components]
+
+t = np.linspace(0, 10, 901)
+dt = t[1] - t[0]
+
+c_dot = np.zeros((n_components, len(t)))  # c_dot dizisini sıfırla
+c_update = np.zeros((n_components, len(t)))  # c_update dizisini sıfırla
+B = np.random.rand(n_components, n_components)
+print(B)
+a = np.random.rand(n_components, len(t))
+
+for j in range(len(t)):
+    for i in range(n_components):
+        c_dot[i, j] = np.matmul(B, absorbance[:, j])[i]
+        c_update[i, j] = (a[i, j] * c_dot[i, j] + absorbance[i, j])
+        absorbance[i, j] = c_update[i, j] 
+
+
+spectrum = np.matmul(absorbance.T, absorbance)
+
+plt.plot(t[0:901], absorbance.T, linewidth=2)
+plt.xlabel("t")
+plt.ylabel("absorbance")
+plt.show()
+
+plt.plot(spectrum, alpha=0.1, linewidth=0.2)
+plt.show()
+
+plt.matshow(spectrum, aspect=1.0)
+plt.show()
+
+pca = PCA(n_components=2)
+tsne = TSNE(n_components=2, random_state=10)
+
+fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+proj1_c = pca.fit_transform(absorbance.T)
+proj1_spectrum = pca.fit_transform(spectrum.T)
+
+x_c = proj1_c[:, 0] / 2
+y_c = proj1_c[:, 1] / 2
+
+x_spectrum = proj1_spectrum[:, 0] / 2
+y_spectrum = proj1_spectrum[:, 1] / 2
+
+axs[0, 0].scatter(x_c, y_c, s=5, color="r")  # axs[0, 0] düzeltilmiş
+axs[0, 1].scatter(x_spectrum, y_spectrum, s=5, color="g")  # axs[0, 1] düzeltilmiş
+
+axs[0, 0].set_title('absorbance PCA')
+axs[0, 1].set_title('spectrum PCA')
+
+proj2_c = tsne.fit_transform(absorbance.T)
+proj2_spectrum = tsne.fit_transform(spectrum.T)
+
+x_c_tsne = proj2_c[:, 0]
+y_c_tsne = proj2_c[:, 1]
+
+x_spectrum_tsne = proj2_spectrum[:, 0]
+y_spectrum_tsne = proj2_spectrum[:, 1]
+
+axs[1, 0].scatter(x_c_tsne, y_c_tsne, s=5, color="r")  # axs[1, 0] düzeltilmiş
+axs[1, 1].scatter(x_spectrum_tsne, y_spectrum_tsne, s=5, color="g")  # axs[1, 1] düzeltilmiş
+
+axs[1, 0].set_title('absorbance t-SNE')
+axs[1, 1].set_title('spectrum t-SNE')
+
+plt.tight_layout()  # Eksenler arası boşlukları ayarlamak için
+
+plt.show()
+
+
