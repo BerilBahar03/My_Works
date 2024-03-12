@@ -1,0 +1,76 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 10 17:52:09 2023
+
+"""
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+
+data = np.zeros((16, 15, 230,4))
+
+metadata = ['aseton', 'bütanol', 'dietil eter', 'dimetil formamid', 'ethanol', 'etil asetat', 'hexan', 'ipa',
+            'kloroform', 'ksilen', 'metanol', 'metilen klorit', 'siklohexan' , 'propanol', 'tetrahidrofuran', 'toluen'] #var olan maddelerin adları
+
+desired_folder = "/home/axe/Masaüstü/LABLAR/Mecit Hocanın LAB/beril/dataz(1)" #maddelerin bulunduğu dosya yolu aynı zamanda kod da bu dosyada.
+
+#her madde için dosyaların olup olmadığı ve sayısını kontrol ediyor
+for i in range(16):
+    for j in range(15):
+        filename = os.path.join(desired_folder, f'mq sensor {metadata[i]} {j + 1}.txt')
+        #print(filename)  # Add this line for debugging
+        if os.path.exists(filename):
+            data[i, j] = np.loadtxt(filename)
+            
+        else:
+            print(f"Dosya bulunamadı: {filename}") 
+    
+fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(20, 15))
+
+a = int(input('1. Madde Sırası:'))
+b = int(input('2. Madde Sırası:'))
+
+# 2 sütun için ayrı grafikler oluştur
+for i in range(3):
+    plt.subplot(3, 2, 2*i+1)  # 3 satır, 2 sütunlu subplotlar için
+    for j in range(15):
+        plt.plot(data[a-1, j, :, i+1], alpha=0.5)
+        
+    mean_spectrum1 = np.mean(data[a-1, :, :, i+1], axis=0)  # Sütunun ortalamasını al
+    plt.plot(mean_spectrum1, color='black', linewidth=2.5, label='Ortalama', alpha=1)
+    plt.xlabel('Saniye')
+    plt.ylabel('Gerilim (V)')
+    plt.title('{}. sensör - {}'.format(i+1, metadata[a-1]))
+    cursor_position = 32
+    plt.axvline(x=cursor_position, color='purple', linestyle='--')
+    cursorr_position = 130
+    plt.axvline(x=cursorr_position, color='orange', linestyle='--')
+    highlight_start = cursor_position
+    highlight_end = cursorr_position
+    plt.axvspan(highlight_start, highlight_end, alpha=0.3, color='yellow')
+
+    plt.subplot(3, 2, 2*i+2)  
+    for j in range(15):
+        plt.plot(data[b-1, j, :, i+1], alpha=0.5)
+        
+    mean_spectrum2 = np.mean(data[b-1, :, :, i+1], axis=0) 
+    plt.plot(mean_spectrum2, color='red', linewidth=2.5, label='Ortalama', alpha=1)
+    plt.xlabel('Saniye')
+    plt.ylabel('Gerilim (V)')
+    plt.title('{}. sensör - {}'.format(i+1, metadata[b-1]))
+    cursor_position = 32
+    plt.axvline(x=cursor_position, color='purple', linestyle='--')
+    cursorr_position = 130
+    plt.axvline(x=cursorr_position, color='orange', linestyle='--')
+    highlight_start = cursor_position
+    highlight_end = cursorr_position
+    plt.axvspan(highlight_start, highlight_end, alpha=0.3, color='yellow')
+
+plt.tight_layout() 
+plt.show()
+
+np.savez('data1',data)
+
+
+#sonç olarak var olan maddelerden 3 tane sensör için alınan verilerin seçilen iki madde için grafiklerini çizip karşılaştırma olanağı sağlıyor ve aynı zamanda bir npz dosyası olarak kayıt ediyor.
