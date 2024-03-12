@@ -1,0 +1,84 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug 30 14:04:51 2023
+
+@author: Lenovo
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import glob
+import random
+
+name = 'data'
+veriler = []
+
+text_files = glob.glob(name + '/*.txt')  # Tüm txt dosyalarını seçiyoruz.
+for a_file in text_files:
+    texti = np.loadtxt(a_file)
+    nveriler = texti[:222, 3]
+    veriler.append(nveriler)
+
+veriler = np.array(veriler)
+
+np.savez(name + '.npz', nveriler=veriler)
+
+data = np.load(name + '.npz', allow_pickle=True)
+
+spectra = data['nveriler']
+# print(spectra)
+# print(spectra.shape)
+
+grup_boyutu = 15  # Her dörtlü için grup boyutu
+grup_araligi = 100
+
+gruplar = [spectra[i:i + grup_boyutu] for i in range(0, len(spectra), grup_boyutu)]
+
+metadata = {
+    'aseton':'chocolate',
+    'dimetil formamid':'darkblue',
+    'kloroform':'lime',
+    'metilen klorit':'plum',
+    'bütanol': 'brown',
+    'dietil eter':'hotpink',
+    'ethanol': 'green',
+    'etil asetat':'olive',
+    'hexan': 'red',
+    'ipa': 'blue',
+    'ksilen':'brown',
+    'methanol': 'orange',
+    'propanol': 'purple',
+    'tetrahidrofuran':'indigo',
+    'toluen':'slateblue'
+}
+
+metadata_keys = list(metadata.keys())
+num_metadata_groups = len(metadata_keys)
+
+for i, grup in enumerate(gruplar):
+    group_name = metadata_keys[i % num_metadata_groups]
+    group_color = metadata[group_name]
+    
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    plt.xlabel('time(s)')
+    plt.ylabel('voltage(V)')
+    plt.title(f'MQ-9 - {group_name}')
+    cursor_position = 32
+    plt.axvline(x=cursor_position, color='purple', linestyle='--')
+    cursorr_position = 130
+    plt.axvline(x=cursorr_position, color='orange', linestyle='--')
+    highlight_start = cursor_position
+    highlight_end = cursorr_position
+    plt.axvspan(highlight_start, highlight_end, alpha=0.3, color='yellow')
+    
+    for j in range(len(grup)):
+        x_shift = j * grup_araligi
+        ax.plot(grup[j] + x_shift, color=group_color, alpha=0.5)
+    
+    mean_line = np.mean(grup, axis=0)
+    ax.plot(mean_line, color='k', linewidth=2)
+    
+    plt.xlim(0, 230)
+    # plt.legend([f'{group_name} - Ortalama'] + [f'{group_name} - {i+1}' for i in range(grup_boyutu)])
+    plt.show()
