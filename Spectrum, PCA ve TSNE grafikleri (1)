@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Created on Mon Feb 12 14:08:07 2024
+@author: axe
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+np.random.seed(0) 
+
+# Kimyasal verileri okuyun
+df = pd.read_pickle('chemicals 0-117.pkl') 
+chemicals = np.array(df.T)  # transmittance [0-1]
+absorbance = np.log(1 / chemicals)
+wavenumbers = df.index
+
+# Sabitler ve parametreler
+n_components = 2 
+absorbance = absorbance[:n_components]
+
+# Kuromoto modeli parametreleri
+omega = np.random.rand(n_components)  # Osilatörlerin açısal hızları
+a = np.random.rand(n_components, n_components)  # Osilatörler arası etkileşim katsayıları
+
+# Başlangıç fazları
+theta = np.random.rand(n_components) * 2 * np.pi
+
+# Zaman aralığı
+t = np.linspace(0, 50, 1500)
+dt = t[1] - t[0]
+steps = len(t)
+
+# Osilatörlerin zaman içindeki faz değişimleri
+amp = np.random.rand(n_components)
+freq = np.arange(n_components) + 1
+thetas = np.zeros((n_components, steps))
+
+# Osilatörlerin fazlarını hesapla
+for i in range(steps):
+    for j in range(n_components):
+        theta_dot = omega[j] + np.sum(a[j] * np.sin(theta - theta[j]))
+        theta[j] += theta_dot * dt 
+        thetas[j, i] = theta[j]  # her bir osilatör için hesaplanan faz değerlerini thetas adlı bir matrise kaydeder. 
+
+phase = freq.reshape(-1,1)*t+thetas
+c = amp.reshape(-1, 1) * np.sin(phase) + 1
+
+# Isı haritasını çizdir
+plt.figure(figsize=(10, 6))
+plt.imshow(c, aspect='auto', cmap='jet', extent=[0, 10, 1, n_components])
+plt.colorbar(label='Faz')
+plt.xlabel('Zaman')
+plt.ylabel('Osilatör')
+plt.title('Kuromoto Modeli Simülasyonu Isı Haritası')
+plt.show()
+
+# Osilatörlerin fazlarını çiz
+for i in range(n_components):
+    plt.plot(t, thetas[i], label=f'Osilatör {i + 1}')
+plt.xlabel('Zaman')
+plt.ylabel('Faz')
+plt.title('Osilatörlerin Fazları')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+plt.plot(t, c.T)
+plt.xlabel('Zaman')
+plt.ylabel('Faz')
+plt.title('Osilatörlerin Fazları')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# Spektrumu hesapla
+spectrum = np.matmul(absorbance.T, c)
+spectrum += np.random.rand(*spectrum.shape) / 100
+
+# Spektrumu görselleştir
+plt.plot(spectrum, alpha=0.01, linewidth=0.2)
+plt.xlabel('Wavenumber')
+plt.ylabel('Absorbance')
+plt.title('Spektrum')
+plt.show()
+
+# Spektrumu matris olarak göster
+plt.matshow(spectrum, aspect=1.0)
+plt.xlabel('Wavenumber')
+plt.ylabel('Sample')
+plt.title('Spektrum Matrisi')
+plt.colorbar(label='Absorbance')
+plt.show()
+
+# PCA ve t-SNE uygula
+pca = PCA(n_components=2)
+tsne = TSNE(n_components=2, random_state=10)
+
+# PCA ve t-SNE dönüşümlerini hesapla
+proj1 = pca.fit_transform(c.T)
+x = proj1[:, 0] / 2
+y = proj1[:, 1] / 2
+
+proj2 = tsne.fit_transform(c.T)
+x2 = proj2[:, 0]
+y2 = proj2[:, 1]
+
+# c için PCA ve t-SNE görselleştirmesi
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.plot(x, y, '-.', color="b")
+plt.xlabel('Component 1')
+plt.ylabel('Component 2')
+plt.title('c-PCA')
+
+plt.subplot(1, 2, 2)
+plt.plot(x2, y2, '-.', color="g")
+plt.xlabel('Component 1')
+plt.ylabel('Component 2')
+plt.title('c-t-SNE')
+plt.tight_layout()
+plt.show()
+
+# Spektrum için PCA ve t-SNE dönüşümlerini hesapla
+proj1 = pca.fit_transform(spectrum.T)
+x = proj1[:, 0] / 2
+y = proj1[:, 1] / 2
+
+proj2 = tsne.fit_transform(spectrum.T)
+x2 = proj2[:, 0]
+y2 = proj2[:, 1]
+
+# Spektrum için PCA ve t-SNE görselleştirmesi
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.plot(x, y, '-.', color="r")
+plt.xlabel('Component 1')
+plt.ylabel('Component 2')
+plt.title('spectrum-PCA')
+
+plt.subplot(1, 2, 2)
+plt.plot(x2, y2, '-.', color="orange")
+plt.xlabel('Component 1')
+plt.ylabel('Component 2')
+plt.title('spectrum-t-SNE')
+plt.tight_layout()
+plt.show()
